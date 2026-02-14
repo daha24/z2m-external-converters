@@ -13,7 +13,7 @@ const actions = [
 ];
 
 /**
- * Read-only action of code input via multistate input clusterxx
+ * Read-only action of code input via multistate input cluster
  */
 function action(endpointName) {
   const attributeKey = "presentValue";
