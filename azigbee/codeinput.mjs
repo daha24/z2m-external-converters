@@ -1,9 +1,10 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
 import * as r from "zigbee-herdsman-converters/lib/reporting";
-
-import { getEndpointName, determineEndpoint, assertString } from "zigbee-herdsman-converters/lib/utils";
+import { assertString } from "zigbee-herdsman-converters/lib/utils";
 import { CLUSTERS, ATTR } from "/config/zigbee2mqtt/external_converters/azigbee/defines.mjs";
 import { Zcl } from "zigbee-herdsman";
+import { state } from "./state.mjs";
+import { action } from "./action.mjs";
 
 // Action names for code input
 const actions = [
@@ -11,94 +12,6 @@ const actions = [
   "input_valid", // 1
   "input_invalid", // 2
 ];
-
-/**
- * Read-only action of code input via multistate input cluster
- */
-function action(endpointName) {
-  const attributeKey = "presentValue";
-
-  const base = m.text({
-    name: "action",
-    label: "CodeInput Action",
-    description: "Code input action",
-    endpointNames: [endpointName],
-    cluster: "genMultistateInput",
-    attribute: attributeKey,
-    access: "STATE_SET",
-    entityCategory: "config",
-  });
-
-  return {
-    ...base,
-    toZigbee: [],
-    fromZigbee: [
-      {
-        cluster: "genMultistateInput",
-        type: ["attributeReport", "readResponse"],
-        convert: (model, msg, publish, options, meta) => {
-          if (
-            attributeKey in msg.data &&
-            (!endpointName || getEndpointName(msg, model, meta) === endpointName)
-          ) {
-            const action_id = msg.data.presentValue;
-            const action_name = actions[action_id] ?? `action_${action_id}`;
-            return { action: action_name };
-          }
-        },
-      },
-    ],
-  };
-}
-
-/**
- * State of code input (ON/OFF)
- */
-function state(endpointName) {
-  const attributeKey = "codeinput_state";
-  const cluster = "genOnOff";
-  const attribute = "onOff";
-
-  const base = m.binary({
-    name: attributeKey,
-    label: "Code input - State",
-    description: "State of code input (when off, device has no power, no input is possible)",
-    valueOn: ["ON", 1],
-    valueOff: ["OFF", 0],
-    endpointNames: [endpointName],
-    cluster: cluster,
-    attribute: attribute,
-    access: "ALL",
-  });
-
-  return {
-    ...base,
-    toZigbee: [
-      {
-        key: [attributeKey],
-        convertSet: async (entity, key, value, meta) => {
-          const ep = determineEndpoint(entity, meta, cluster);
-          const v = value === "ON" || value === 1 || value === true ? "on" : "off";
-          await ep.command(cluster, v, {}, { disableDefaultResponse: true });
-          await ep.read(cluster, [attribute]);
-          return { state: { [attributeKey]: value } };
-        },
-      },
-    ],
-    fromZigbee: [
-      {
-        cluster: cluster,
-        type: ["attributeReport", "readResponse"],
-        convert: (model, msg, publish, options, meta) => {
-          if (getEndpointName(msg, model, meta) !== endpointName) return;
-          if (attribute in msg.data) {
-            return { [attributeKey]: msg.data.onOff ? "ON" : "OFF" };
-          }
-        },
-      },
-    ],
-  };
-}
 
 /**
  * Returns code input exposes, optionally filtered by keys
@@ -109,8 +22,19 @@ function state(endpointName) {
  */
 function attributes(endpointName, keys) {
   const all = {
-    state: state(endpointName),
-    action: action(endpointName),
+    state: state({
+      endpointName,
+      attributeKey: "codeinput_state",
+      label: "Code Input - State",
+      description: "State of code input (when off, device has no power, no input is possible)",
+    }),    
+    action: action({
+      endpointName,
+      attributeKey: "action",
+      label: "Code Input - Action",
+      description: "Code input button action detected (input_valid/input_invalid/idle)",
+      values: actions,
+    }),
     code: m.text({
       name: "code",
       endpointNames: [endpointName],
