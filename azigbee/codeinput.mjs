@@ -13,7 +13,7 @@ const actions = [
 ];
 
 /**
- * Read-only action of code input via multistate input cluster
+ * Read-only action of code input via multistate input clusterxx
  */
 function action(endpointName) {
   const attributeKey = "presentValue";
@@ -108,7 +108,6 @@ function state(endpointName) {
  * available keys ["state", "action", "code", "timeout", "lockout", "progressive"];
  */
 function attributes(endpointName, keys) {
-  // Full list of all possible exposes
   const all = {
     state: state(endpointName),
     action: action(endpointName),
