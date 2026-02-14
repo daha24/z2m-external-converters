@@ -4,7 +4,7 @@ import * as r from "zigbee-herdsman-converters/lib/reporting";
 import { getEndpointName, assertString, determineEndpoint, getOptions} from "zigbee-herdsman-converters/lib/utils";
 import { Zcl } from "zigbee-herdsman";
 import { access as ea } from "zigbee-herdsman-converters/lib/exposes";
-import { CLUSTERS, ATTR } from "/config/zigbee2mqtt/external_converters/azigbee/defines.mjs";
+import { CLUSTERS, ATTR } from "./azigbee/config.mjs";
 import CodeInput from "/config/zigbee2mqtt/external_converters/azigbee/codeinput.mjs";
 
 export function identify(args) {

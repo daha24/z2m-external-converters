@@ -5,18 +5,18 @@ import { determineEndpoint, getEndpointName } from "zigbee-herdsman-converters/l
  * Creates a binary state attribute for a switch - similar to standard m.onOff but with more configurable options.
  * @param {Object} params - configuration object
  * @param {string} params.endpointName - endpoint to attach to
- * @param {string} params.attributeKey - name of the attribute key
+ * @param {string} params.attributeName - name of the attribute 
  * @param {string} params.label - human-readable label
  * @param {string} params.description - description text
  * @returns {object} Zigbee2MQTT entity object
  */
-export default function state(params) {
-  const { endpointName, attributeKey, label, description } = params;
+export function state(params) {
+  const { endpointName, attributeName, label, description } = params;
   const cluster = "genOnOff";
   const attribute = "onOff";
 
   const base = m.binary({
-    name: attributeKey,
+    name: attributeName,
     label,
     description,
     valueOn: ["ON", 1],
@@ -31,13 +31,13 @@ export default function state(params) {
     ...base,
     toZigbee: [
       {
-        key: [attributeKey],
+        key: [attributeName],
         convertSet: async (entity, key, value, meta) => {
           const ep = determineEndpoint(entity, meta, cluster);
           const v = value === "ON" || value === 1 || value === true ? "on" : "off";
           await ep.command(cluster, v, {}, { disableDefaultResponse: true });
           await ep.read(cluster, [attribute]);
-          return { state: { [attributeKey]: value } };
+          return { state: { [attributeName]: value } };
         },
       },
     ],
@@ -48,7 +48,7 @@ export default function state(params) {
         convert: (model, msg, publish, options, meta) => {
           if (getEndpointName(msg, model, meta) !== endpointName) return;
           if (attribute in msg.data) {
-            return { [attributeKey]: msg.data.onOff ? "ON" : "OFF" };
+            return { [attributeName]: msg.data.onOff ? "ON" : "OFF" };
           }
         },
       },
