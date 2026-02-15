@@ -1,11 +1,7 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
-// import * as e from "zigbee-herdsman-converters/lib/exposes";
-// import { access as ea } from "zigbee-herdsman-converters/lib/exposes";
 import { getEndpointName } from "zigbee-herdsman-converters/lib/utils";
-// import { getOptions } from "zigbee-herdsman-converters/lib/utils";
 import { bind } from "zigbee-herdsman-converters/lib/reporting";
 import { Zcl } from "zigbee-herdsman";
-// import { logger } from "zigbee-herdsman-converters/lib/logger";
 
 const clst = {
   manuButtonOptions: 0xa000,
