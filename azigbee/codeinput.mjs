@@ -1,7 +1,14 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
+import * as r from "zigbee-herdsman-converters/lib/reporting";
 import { assertString } from "zigbee-herdsman-converters/lib/utils";
 import { Zcl } from "zigbee-herdsman";
-import { config_map, filter_keys, CLUSTERS, ATTR } from "/config/zigbee2mqtt/external_converters/azigbee/config.mjs";
+import {
+  config_map,
+  filter_keys,
+  identify,
+  CLUSTERS,
+  ATTR,
+} from "/config/zigbee2mqtt/external_converters/azigbee/config.mjs";
 import { state } from "./state.mjs";
 import { action } from "./action.mjs";
 
@@ -52,10 +59,11 @@ const map = {
 /**
  * Returns code input exposes, optionally filtered by keys
  * @param {string} endpointName
+ * @param {integer} endpointID
  * @param {string[]} keys - optional array of keys to include, e.g., ["code", "timeout"]
- *                          available keys ["state", "action", "code", "timeout", "lockout", "progressive"];
+ *                          available keys ["state", "action", "code", "timeout", "lockout", "progressive", "identify"];
  */
-function attributes(endpointName, keys) {
+function attributes(endpointName, endpointID, keys) {
   const all = {
     state: state({
       endpointName,
@@ -127,17 +135,22 @@ function attributes(endpointName, keys) {
       attribute: { ID: map.progressive.attribute, type: map.progressive.type },
       access: "ALL",
     }),
+    identify: identify({ [endpointName]: endpointID }),
   };
   return filter_keys(all, keys);
 }
-
 
 /**
  * Configure code input endpoint
  * Reads & binds only the clusters needed for the specified keys
  */
 async function configure(device, coordinatorEndpoint, endpointID, keys) {
-  return config_map(device, coordinatorEndpoint, endpointID, map, keys);
+  await config_map(device, coordinatorEndpoint, endpointID, map, keys);
+  // setup reporting for onOff cluster as device itselff can switch it off/on for invalid inputs
+  // AZigbee CodeInput C++ code DOES NOT change the state of button ON invalid output, so reporting cant work, get state cant work
+  // either report it or maybe use "input_invalid" for sensing the and change it to idle ONLY after it is listening again (or add new action "lockout")
+  // const ep = device.getEndpoint(endpointID);
+  // await ep.configureReporting("genOnOff", [{  attribute: "onOff",  minimumReportInterval: 0,  maximumReportInterval: 65000,  reportableChange: 0,},  ]);
 }
 
 export default {

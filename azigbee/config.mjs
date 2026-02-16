@@ -1,54 +1,57 @@
 import * as r from "zigbee-herdsman-converters/lib/reporting";
+import * as e from "zigbee-herdsman-converters/lib/exposes";
+import { access as ea } from "zigbee-herdsman-converters/lib/exposes";
+import { getOptions } from "zigbee-herdsman-converters/lib/utils";
 
 // Custom cluster IDs
 export const CLUSTERS = {
-  BUTTON_OPTIONS: 0xA000,
-  CODEINPUT_OPTIONS: 0xFCC1,
-  WINCOVER_OPTIONS: 0xFCD1,
-  LIGHT_MODE: 0xFCE2,
-  RGB_LIGHT_MODE: 0xA001,
-  MEDIA_PLAYER: 0xFCF1,
-  RELAY_OPTIONS: 0xFCE1,
+  BUTTON_OPTIONS: 0xa000,
+  CODEINPUT_OPTIONS: 0xfcc1,
+  WINCOVER_OPTIONS: 0xfcd1,
+  LIGHT_MODE: 0xfce2,
+  RGB_LIGHT_MODE: 0xa001,
+  MEDIA_PLAYER: 0xfcf1,
+  RELAY_OPTIONS: 0xfce1,
 };
 
 // Custom attribute IDs
 export const ATTR = {
   // Button cluster
-  BUTTON_FEEDBACK: 0xA000,
-  BUTTON_LONG_PRESS_DELAY: 0xA001,
-  BUTTON_FEEDBACK_COLOR: 0xA002,
-  BUTTON_FEEDBACK_LEVEL: 0xA003,
+  BUTTON_FEEDBACK: 0xa000,
+  BUTTON_LONG_PRESS_DELAY: 0xa001,
+  BUTTON_FEEDBACK_COLOR: 0xa002,
+  BUTTON_FEEDBACK_LEVEL: 0xa003,
 
   // Code input cluster
-  CODEINPUT_CODE: 0xFCC0,
-  CODEINPUT_TIMEOUT: 0xFCC1,
-  CODEINPUT_LOCKOUT: 0xFCC2,
-  CODEINPUT_LOCKOUT_PROGRESSIVE: 0xFCC3,
+  CODEINPUT_CODE: 0xfcc0,
+  CODEINPUT_TIMEOUT: 0xfcc1,
+  CODEINPUT_LOCKOUT: 0xfcc2,
+  CODEINPUT_LOCKOUT_PROGRESSIVE: 0xfcc3,
 
   // Window covering / gate
-  WINCOVER_TUYA_MOVING_STATE: 0xF000,
-  WINCOVER_TUYA_CALIBRATION: 0xF001,
-  WINCOVER_TUYA_MOTOR_REVERSAL: 0xF002,
-  WINCOVER_MOES_CALIBRATION_TIME: 0xF003,
-  WINCOVER_WARN_ON_MOVE: 0xFCD0,
+  WINCOVER_TUYA_MOVING_STATE: 0xf000,
+  WINCOVER_TUYA_CALIBRATION: 0xf001,
+  WINCOVER_TUYA_MOTOR_REVERSAL: 0xf002,
+  WINCOVER_MOES_CALIBRATION_TIME: 0xf003,
+  WINCOVER_WARN_ON_MOVE: 0xfcd0,
 
   // Light clusters
-  LIGHT_MODE: 0xFCE3,
-  LIGHT_INTERVAL: 0xFCE4,
-  RGB_LIGHT_MODE: 0xA002,
-  RGB_LIGHT_INTERVAL: 0xA003,
+  LIGHT_MODE: 0xfce3,
+  LIGHT_INTERVAL: 0xfce4,
+  RGB_LIGHT_MODE: 0xa002,
+  RGB_LIGHT_INTERVAL: 0xa003,
 
   // Media player
-  MEDIA_PLAYER_STATE: 0xFCF2,
-  MEDIA_PLAYER_COMMAND: 0xFCF3,
-  MEDIA_PLAYER_VOLUME: 0xFCF4,
-  MEDIA_PLAYER_TRACK_COUNT: 0xFCF5,
-  MEDIA_PLAYER_CURRENT_TRACK_NUM: 0xFCF6,
-  MEDIA_PLAYER_PLAYMODE: 0xFCF7,
+  MEDIA_PLAYER_STATE: 0xfcf2,
+  MEDIA_PLAYER_COMMAND: 0xfcf3,
+  MEDIA_PLAYER_VOLUME: 0xfcf4,
+  MEDIA_PLAYER_TRACK_COUNT: 0xfcf5,
+  MEDIA_PLAYER_CURRENT_TRACK_NUM: 0xfcf6,
+  MEDIA_PLAYER_PLAYMODE: 0xfcf7,
 
   // Relay cluster
-  RELAY_TYPE: 0xFCE2,
-  RELAY_COUNTDOWN: 0xFCE3,
+  RELAY_TYPE: 0xfce2,
+  RELAY_COUNTDOWN: 0xfce3,
 };
 
 /**
@@ -59,7 +62,13 @@ export const ATTR = {
  * @param {Object} map - mapping of keys to { cluster, attribute }
  * @param {string[]} keys - optional array of keys to configure
  */
-export async function config_map(device, coordinatorEndpoint, endpointID, map, keys) {
+export async function config_map(
+  device,
+  coordinatorEndpoint,
+  endpointID,
+  map,
+  keys
+) {
   const endpoint = device.getEndpoint(endpointID);
   const selectedKeys = keys ?? Object.keys(map);
 
@@ -70,13 +79,16 @@ export async function config_map(device, coordinatorEndpoint, endpointID, map, k
     const entry = map[k];
     if (!entry) return;
 
-    clustersToBind.add(entry.cluster);
+    // skip null clusters
+    if (entry.cluster != null) {
+      clustersToBind.add(entry.cluster);
 
-    // Now attribute is a single value, not an array
-    clustersToRead[entry.cluster] = [
-      ...(clustersToRead[entry.cluster] ?? []),
-      entry.attribute,
-    ];
+      // single attribute, not array
+      clustersToRead[entry.cluster] = [
+        ...(clustersToRead[entry.cluster] ?? []),
+        entry.attribute,
+      ];
+    }
   });
 
   // Read attributes per cluster
@@ -86,7 +98,9 @@ export async function config_map(device, coordinatorEndpoint, endpointID, map, k
   }
 
   // Bind clusters
-  await r.bind(endpoint, coordinatorEndpoint, Array.from(clustersToBind));
+  if (clustersToBind.size > 0) {
+    await r.bind(endpoint, coordinatorEndpoint, Array.from(clustersToBind));
+  }
 }
 
 /**
@@ -100,3 +114,71 @@ export function filter_keys(all, keys) {
   return keys.map((k) => all[k]).filter(Boolean);
 }
 
+/**
+ * Reads standard genBasic attributes for a given endpoint
+ * @param {Object} device - Zigbee device object
+ * @param {number|string} endpointID - endpoint number or name
+ */
+export async function readGenBasic(device, endpointID) {
+  const ep = device.getEndpoint(endpointID);
+  if (!ep) throw new Error(`Endpoint ${endpointID} not found`);
+
+  await ep.read("genBasic", [
+    "modelId",
+    "swBuildId",
+    "dateCode",
+    "powerSource",
+  ]);
+}
+
+/**
+ * Creates standard Identify exposes for multiple endpoints
+ * @param {Object} endpoints - a standard z2m endpoint map as used in m.deviceEndpoints
+ * @returns {Object} { exposes, toZigbee, isModernExtend }
+ */
+export function identify(endpoints) {
+  if (!endpoints) throw new Error("Endpoint mapping required");
+
+  const exposes = [];
+  const toZigbee = [];
+
+  for (const [name, id] of Object.entries(endpoints)) {
+    const keyName = `identify_${name}`;
+
+    exposes.push(
+      e
+        .enum(keyName, ea.SET, ["identify"])
+        .withLabel("Identify")
+        .withDescription(
+          `Initiate device identification (endpoint: ${name}, id: ${id})`
+        )
+        .withCategory("config")
+        .withEndpoint(name)
+    );
+
+    toZigbee.push({
+      key: [keyName],
+      options: [
+        e
+          .numeric("identify_timeout", ea.SET)
+          .withDescription(
+            "Sets the duration of the identification procedure in seconds (1–30, default 3)."
+          )
+          .withValueMin(1)
+          .withValueMax(30),
+      ],
+      convertSet: async (entity, key, value, meta) => {
+        const timeoutVal = meta.options?.identify_timeout ?? 3;
+        const ep = entity.getDevice().getEndpoint(id);
+        await ep.command(
+          "genIdentify",
+          "identify",
+          { identifytime: timeoutVal },
+          getOptions(meta.mapped, ep)
+        );
+      },
+    });
+  }
+
+  return { exposes, toZigbee, isModernExtend: true };
+}
