@@ -13,15 +13,6 @@ import { state } from "./state.mjs";
 import { action } from "./action.mjs";
 
 /**
- * Action names for code input action attribute
- */
-const action_values = [
-  "idle", // 0
-  "input_valid", // 1
-  "input_invalid", // 2
-];
-
-/**
  * Central mapping of attribute keys to clusters and attributes
  * Used in both attributes() and configure()
  */
@@ -68,22 +59,27 @@ function attributes(endpointName, endpointID, keys) {
     state: state({
       endpointName,
       attributeName: "codeinput_state",
-      label: "Code Input - State",
+      label: `Code Button State (Endpoint: ${endpointName})`,
       description:
         "State of code input (when off, device has no power, no input is possible)",
     }),
     action: action({
       endpointName,
-      label: "Code Input - Action",
-      description:
-        "Code input button action detected (input_valid/input_invalid/idle)",
-      values: action_values,
+      lookup: {
+        idle: 0,
+        input_valid: 1,
+        input_invalid: 2,
+        lockout: 254,
+        unknown: 255,
+      },
     }),
     code: m.text({
       name: "code",
-      endpointNames: [endpointName],
+      label: `Code Button Secret (Endpoint: ${endpointName})`,
+      endpointName,
       cluster: map.code.cluster,
       attribute: { ID: map.code.attribute, type: map.code.type },
+      entityCategory: "config",
       description:
         "Code sequence for external open/close button (. for short, - for long press, max 8 characters, empty = any click valid)",
       access: "ALL",
@@ -95,7 +91,7 @@ function attributes(endpointName, endpointID, keys) {
     }),
     timeout: m.numeric({
       name: "timeout",
-      label: "Code Input - Timeout",
+      label: `Code Button Timeout`,
       description: "Time in milliseconds to detect idle state (end of input)",
       unit: "ms",
       valueMin: 500,
@@ -109,7 +105,7 @@ function attributes(endpointName, endpointID, keys) {
     }),
     lockout: m.numeric({
       name: "lockout",
-      label: "Code Input - Lockout",
+      label: `Code Button Lockout`,
       description:
         "Time in milliseconds to lock input after invalid code entered",
       unit: "ms",
@@ -124,13 +120,13 @@ function attributes(endpointName, endpointID, keys) {
     }),
     progressive: m.binary({
       name: "progressive",
-      label: "Code Input - Progressive Lockout",
+      label: `Code Button Progressive Lockout`,
       description:
         "Enable or disable progressive (exponential) lockout after invalid input",
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointNames: [endpointName],
+      endpointName,
       cluster: map.progressive.cluster,
       attribute: { ID: map.progressive.attribute, type: map.progressive.type },
       access: "ALL",
