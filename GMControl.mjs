@@ -14,7 +14,7 @@ export default {
   ota: true,
   extend: [
     m.deviceEndpoints({ endpoints }),
-    ...WinCover.attributes("gate", endpoints.gate),
+    ...WinCover.attributes("gate", endpoints.gate, ["moving", "obstruction", "lift", "calibration_time", "warnOnMove", "identify"]),
     ...CodeInput.attributes("codeinput", endpoints.codeinput),
   ],
   meta: { multiEndpoint: true },

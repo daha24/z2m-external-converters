@@ -18,8 +18,10 @@ const map = {
     attribute: "tuyaMovingState",
     type: Zcl.DataType.UINT8,
   },
-  occupancy: {
-    cluster: null, // handled by m.occupancy
+  obstruction: {
+    cluster: CLUSTERS.WINCOVER_OPTIONS,
+    attribute: ATTR.WINCOVER_OBSTRUCTION_SENSOR,
+    type: Zcl.DataType.ENUM8,
   },
   windowCovering: {
     cluster: null, // handled by m.windowCovering
@@ -52,28 +54,40 @@ TODO
  * @param {string} endpointName
  * @param {integer} endpointID
  * @param {string[]} keys - optional array of keys to include
- *                          available keys: ["moving", "occupancy", "windowCovering", "calibration", "calibration_time", "warnOnMove", "identify"]
+ *                          available keys: ["moving", "obstruction", "lift", "calibration", "calibration_time", "warnOnMove", "identify"]
  */
 export function attributes(endpointName, endpointID, keys) {
   const all = {
     moving: m.enumLookup({
       name: "moving",
-      label: `Motor (Endpoint: ${endpointName})`,
+      label: `Gate Motor State`,
       description: "",
       lookup: {
         IDLE: 0,
         OPENING: 1,
         CLOSING: 2,
+        UNKNOWN: 255,
       },
-      endpointNames: [endpointName],
+      endpointName: endpointName,
       cluster: map.moving.cluster,
       attribute: map.moving.attribute,
       access: "STATE_GET",
     }),
-    occupancy: m.occupancy({
-      endpointNames: [endpointName],
+    obstruction: m.enumLookup({
+      name: "obstruction",
+      label: `Gate Obstruction State`,
+      description: "",
+      lookup: {
+        CLEAR: 0,
+        BLOCKED: 1,
+        UNKNOWN: 255,
+      },
+      endpointName,
+      cluster: map.obstruction.cluster,
+      attribute:  { ID: map.obstruction.attribute, type: map.obstruction.type },
+      access: "STATE_GET",
     }),
-    windowCovering: m.windowCovering({
+    lift: m.windowCovering({
       controls: ["lift"],
       endpointNames: [endpointName],
     }),
@@ -85,7 +99,7 @@ export function attributes(endpointName, endpointID, keys) {
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointNames: [endpointName],
+      endpointName,
       cluster: map.calibration.cluster,
       attribute: map.calibration.attribute,
       access: "ALL",
@@ -112,7 +126,7 @@ export function attributes(endpointName, endpointID, keys) {
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointNames: [endpointName],
+      endpointName,
       cluster: map.warnOnMove.cluster,
       attribute: { ID: map.warnOnMove.attribute, type: map.warnOnMove.type },
       access: "ALL",
