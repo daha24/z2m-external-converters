@@ -1,72 +1,22 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
-import {
-  getEndpointName,
-  assertString,
-} from "zigbee-herdsman-converters/lib/utils";
 import * as reporting from "zigbee-herdsman-converters/lib/reporting";
-import { Zcl } from "zigbee-herdsman";
 import * as e from "zigbee-herdsman-converters/lib/exposes";
+import { Zcl } from "zigbee-herdsman";
 import { access as ea } from "zigbee-herdsman-converters/lib/exposes";
 import { getOptions } from "zigbee-herdsman-converters/lib/utils";
-// import { logger } from "zigbee-herdsman-converters/lib/logger";
+
+import { CLUSTERS, ATTR } from "./azigbee/config.mjs";
+import CodeInput from "/config/zigbee2mqtt/external_converters/azigbee/codeinput.mjs";
+
+const endpoints = { gate: 1, codeinput: 2 };
 
 const clst = {
-  manuCodeInputOptions: 0xfcc1,
   manuWinCoverOptions: 0xfcd1,
 };
 
 const attr = {
-  code: 0xfcc0, // char[CODEINPUT_MAX_CODE_LENGTH]
-  timeout: 0xfcc1, // uint32_t
-  lockout: 0xfcc2, // uint32_t
-  progressive: 0xfcc3, // bool
   warnOnMove: 0xfcd0, // bool
 };
-
-const actions = [
-  "idle", // 0
-  "input_valid", // 1
-  "input_invalid", // 2
-];
-
-/// local extern based on m.text for readonly codeinput action via multistate input cluster
-function codeInputAction() {
-  const attributeKey = "presentValue";
-  const endpointName = "codeinput";
-  const base = m.text({
-    name: "action",
-    label: "CodeInput Action",
-    description: "Code input action",
-    endpointNames: ["codeinput"],
-    cluster: "genMultistateInput",
-    attribute: attributeKey,
-    access: "STATE_SET",
-    entityCategory: "config",
-  });
-  return {
-    ...base,
-    toZigbee: [], // disable writing
-    fromZigbee: [
-      {
-        cluster: "genMultistateInput",
-        type: ["attributeReport", "readResponse"],
-        convert: (model, msg, publish, options, meta) => {
-          if (
-            attributeKey in msg.data &&
-            (!endpointName ||
-              getEndpointName(msg, model, meta) === endpointName)
-          ) {
-            const action_id = msg.data.presentValue;
-            const action_name = actions[action_id] ?? `action_${action_id}`;
-            return {
-              action: action_name,
-            };
-          }
-        },
-      },
-    ],
-  };
-}
 
 export function identify(args) {
   args = args || {};
@@ -197,76 +147,7 @@ export default {
       attribute: { ID: attr.warnOnMove, type: Zcl.DataType.BOOLEAN },
       access: "ALL",
     }),
-    codeInputAction(),
-    m.text({
-      name: "code",
-      endpointNames: ["codeinput"],
-      cluster: clst.manuCodeInputOptions,
-      attribute: { ID: attr.code, type: Zcl.DataType.CHAR_STR },
-      description:
-        "Code sequence for external open/close button (. for short, - for long press, max 8 characters)",
-      access: "ALL",
-      validate: (value) => {
-        assertString(value);
-        if (value.length > 8)
-          throw new Error("Length of text is greater than 8");
-      },
-    }),
-    m.binary({
-      name: "codeinput_state",
-      label: "Code input - State",
-      description:
-        "State of code input (when off, device is has no power, no input is possible)",
-      valueOn: ["ON", 1],
-      valueOff: ["OFF", 0],
-      endpointNames: ["codeinput"],
-      cluster: "genOnOff",
-      attribute: "onOff",
-      access: "ALL",
-    }),
-    m.numeric({
-      name: "timeout",
-      label: "Code Input - Timeout",
-      description: "Time in milliseconds to detect idle state (end of input)",
-      unit: "ms",
-      valueMin: 500,
-      valueMax: 5000,
-      valueStep: 500,
-      entityCategory: "config",
-      endpointNames: ["codeinput"],
-      cluster: clst.manuCodeInputOptions,
-      attribute: { ID: attr.timeout, type: Zcl.DataType.UINT32 },
-      access: "ALL",
-    }),
-
-    m.numeric({
-      name: "lockout",
-      label: "Code Input - Lockout",
-      description:
-        "Time in milliseconds to lock input after invalid code entered",
-      unit: "ms",
-      valueMin: 500,
-      valueMax: 5000,
-      valueStep: 500,
-      entityCategory: "config",
-      endpointNames: ["codeinput"],
-      cluster: clst.manuCodeInputOptions,
-      attribute: { ID: attr.lockout, type: Zcl.DataType.UINT32 },
-      access: "ALL",
-    }),
-    m.binary({
-      name: "progressive",
-      label: "Code Input - Progressive Lockout",
-      description:
-        "Enable or disable progressive (exponential) lockout after invalid input",
-      valueOn: ["ON", 1],
-      valueOff: ["OFF", 0],
-      entityCategory: "config",
-      endpointNames: ["codeinput"],
-      cluster: clst.manuCodeInputOptions,
-      attribute: { ID: attr.progressive, type: Zcl.DataType.BOOLEAN },
-      access: "ALL",
-    }),
+    ...CodeInput.attributes("codeinput", endpoints.codeinput),
     identify({ endpoints: [1, 2] }),
   ],
   meta: { multiEndpoint: true },
@@ -285,20 +166,6 @@ export default {
       clst.manuWinCoverOptions,
     ]);
     await reporting.currentPositionLiftPercentage(ep1);
-
-    const ep2 = device.getEndpoint(2);
-    await ep2.read("genMultistateInput", ["presentValue"]);
-    await ep2.read("genOnOff", ["onOff"]);
-    await ep2.read(clst.manuCodeInputOptions, [
-      attr.code,
-      attr.timeout,
-      attr.lockout,
-      attr.progressive,
-    ]);
-    await reporting.bind(ep2, coordinatorEndpoint, [
-      "genMultistateInput",
-      "genOnOff",
-      clst.manuCodeInputOptions,
-    ]);
+    await CodeInput.configure(device, coordinatorEndpoint, endpoints.codeinput);
   },
 };
