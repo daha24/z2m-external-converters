@@ -13,7 +13,7 @@ import {
  * Central mapping of wincover attribute keys to clusters, attributes, and types
  */
 const map = {
-  moving: {
+  activity: {
     cluster: "closuresWindowCovering",
     attribute: "tuyaMovingState",
     type: Zcl.DataType.UINT8,
@@ -26,7 +26,7 @@ const map = {
   windowCovering: {
     cluster: null, // handled by m.windowCovering
   },
-  calibration: {
+  calibration_mode: {
     cluster: "closuresWindowCovering",
     attribute: "tuyaCalibration",
     type: Zcl.DataType.BOOLEAN,
@@ -36,46 +36,54 @@ const map = {
     attribute: "moesCalibrationTime",
     type: Zcl.DataType.UINT8,
   },
-  warnOnMove: {
+  motor_reversal: {
+    cluster: "closuresWindowCovering",
+    attribute: "tuyaMotorReversal",
+    type: Zcl.DataType.BOOLEAN,
+  },
+  warn_on_move: {
     cluster: CLUSTERS.WINCOVER_OPTIONS,
     attribute: ATTR.WINCOVER_WARN_ON_MOVE,
     type: Zcl.DataType.BOOLEAN,
   },
 };
 
-/*
-TODO
-- [ ] add option to pass moving name/values - motor/ shutter / gate
-- [ ] add wincover other attributes as UP/DOWN, lift/tilt etc. - this code reflects special GateRC implementation
-*/
-
 /**
  * Returns wincover exposes, optionally filtered by keys
  * @param {string} endpointName
  * @param {integer} endpointID
- * @param {string[]} keys - optional array of keys to include
- *                          available keys: ["moving", "obstruction", "lift", "calibration", "calibration_time", "warnOnMove", "identify"]
+ * @param {Object} [options] - optional overrides for exposes
+ * @param {Object} [options.lookup] - override/extend enum values for activity expose
+ * @param {string[]} [options.controls] - array of windowCovering controls, e.g. ["lift", "tilt"]
+ * @param {string[]} [keys] - optional array of keys to include
+ *                             available keys: ["activity", "obstruction", "controls", "calibration_mode", "calibration_time", "motor_reversal", "warn_on_move", "identify"]
  */
-export function attributes(endpointName, endpointID, keys) {
+export function attributes(endpointName, endpointID, options = {}, keys) {
+  
+  const activityLookup = {
+    IDLE: 0,
+    UP: 1,
+    DOWN: 2,
+    UNKNOWN: 255,
+    ...(options.lookup || {}),
+  };
+  const wincoverControls = options.controls || ["lift"];
+
   const all = {
-    moving: m.enumLookup({
-      name: "moving",
-      label: `Gate Motor State`,
+    activity: m.enumLookup({
+      name: "activity",
+      label: "Activity",
       description: "",
-      lookup: {
-        IDLE: 0,
-        OPENING: 1,
-        CLOSING: 2,
-        UNKNOWN: 255,
-      },
-      endpointName: endpointName,
-      cluster: map.moving.cluster,
-      attribute: map.moving.attribute,
+      lookup: activityLookup,
+      endpointName,
+      cluster: map.activity.cluster,
+      attribute: map.activity.attribute,
       access: "STATE_GET",
     }),
+
     obstruction: m.enumLookup({
       name: "obstruction",
-      label: `Gate Obstruction State`,
+      label: "Obstruction",
       description: "",
       lookup: {
         CLEAR: 0,
@@ -84,29 +92,32 @@ export function attributes(endpointName, endpointID, keys) {
       },
       endpointName,
       cluster: map.obstruction.cluster,
-      attribute:  { ID: map.obstruction.attribute, type: map.obstruction.type },
+      attribute: { ID: map.obstruction.attribute, type: map.obstruction.type },
       access: "STATE_GET",
     }),
-    lift: m.windowCovering({
-      controls: ["lift"],
+
+    controls: m.windowCovering({
+      controls: wincoverControls,
       endpointNames: [endpointName],
     }),
-    calibration: m.binary({
-      name: "calibration",
-      label: "Calibration",
+
+    calibration_mode: m.binary({
+      name: "calibration_mode",
+      label: "Calibration Mode",
       description:
         "Set calibration ON, move all down, stop, move all up, stop, set calibration OFF. New calibration time is recorded.",
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
       endpointName,
-      cluster: map.calibration.cluster,
-      attribute: map.calibration.attribute,
+      cluster: map.calibration_mode.cluster,
+      attribute: map.calibration_mode.attribute,
       access: "ALL",
     }),
+
     calibration_time: m.numeric({
       name: "calibration_time",
-      label: "Calibration time",
+      label: "Calibration Time",
       description: "",
       unit: "s",
       valueMin: 0,
@@ -118,19 +129,37 @@ export function attributes(endpointName, endpointID, keys) {
       attribute: map.calibration_time.attribute,
       access: "ALL",
     }),
-    warnOnMove: m.binary({
-      name: "warnOnMove",
-      label: "Warn On Move",
-      description:
-        "Enables/disables local warning, when moving (e.g. beep) - if HW exists.",
+
+    motor_reversal: m.binary({
+      name: "motor_reversal",
+      label: "Motor Reversal",
+      description: "",
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
       endpointName,
-      cluster: map.warnOnMove.cluster,
-      attribute: { ID: map.warnOnMove.attribute, type: map.warnOnMove.type },
+      cluster: map.motor_reversal.cluster,
+      attribute: map.motor_reversal.attribute,
       access: "ALL",
     }),
+
+    warn_on_move: m.binary({
+      name: "warn_on_move",
+      label: "Warn On Move",
+      description:
+        "Enables/disables local warning when moving (e.g. beep) - if hardware implements it.",
+      valueOn: ["ON", 1],
+      valueOff: ["OFF", 0],
+      entityCategory: "config",
+      endpointName,
+      cluster: map.warn_on_move.cluster,
+      attribute: {
+        ID: map.warn_on_move.attribute,
+        type: map.warn_on_move.type,
+      },
+      access: "ALL",
+    }),
+
     identify: identify({ [endpointName]: endpointID }),
   };
 
