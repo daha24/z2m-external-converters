@@ -1,68 +1,45 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
-import { getEndpointName } from "zigbee-herdsman-converters/lib/utils";
-import { bind } from "zigbee-herdsman-converters/lib/reporting";
-import { Zcl } from "zigbee-herdsman";
+import Relay from "/config/zigbee2mqtt/external_converters/azigbee/relay.mjs";
+import MultiState from "/config/zigbee2mqtt/external_converters/azigbee/multistate.mjs";
 
-const clst = {
-  manuRelayOptions: 0xFCE1,
+const endpoints = { relay: 1, bell: 2 };
+
+const relayKeys = ["state", "on_time_limited", "identify"];
+
+const bellOptions = {
+  label: "State",
+  description: "Reports bell state via a sensor over the bell contancts",
+  lookup: {
+    OFF: 0,
+    ON: 1,
+  },
 };
-
-const attr = {
-  manuRelayType: 0xFCE2,
-  manuRelayCountdown: 0xFCE3,
-};
-
-const bell_state = [
-  "idle", // 0
-  "ringing", // 1
-];
 
 export default {
-  zigbeeModel: ["SmartBell"],
-  model: "SmartBell",
+  zigbeeModel: ["BellRC"],
+  model: "BellRC",
   vendor: "FUNAMI corp. Ltd.",
-  description: "Zigbee enabled controller of standard home intercom - bell ringing sensor + open door button",
+  description:
+    "Zigbee enabled remote controller of home intercom - bell sensor + open door relay with enforced countdown",
   ota: true,
+
   extend: [
-    m.deviceEndpoints({ endpoints: { "relay": 1, "sensor": 2 } }),
-    m.onOff({
-      "endpointNames":["relay"],
-      "powerOnBehavior": false,
-      "description": "Door open button state (on/off - countdown ALWAYS enforced)",
-    }),
-    m.numeric({
-      name: "countdown",
-      label: "Door Open Button Countdown",
-      description: "Enforced max duration of door open button active.",
-      unit: "s",
-      valueMin: 1,
-      valueMax: 30,
-      valueStep: 1,
-      entityCategory: "config",
-      endpointNames: ["relay"],
-      cluster: clst.manuRelayOptions,
-      attribute: { ID: attr.manuRelayCountdown, type: Zcl.DataType.UINT16 },
-      access: "ALL",
-    }),    
-    // m.enumLookup({
-    //   name: "bell",
-    //   label: "Door Bell State",
-    //   description: "",
-    //   lookup: {
-    //     idle: 0,
-    //     ringing: 1,
-    //   },
-    //   endpointNames: ["sensor"],
-    //   cluster: clst.manuRGBMode,
-    //   attribute: { ID: attr.rgbMode, type: Zcl.DataType.ENUM8 },
-    //   access: "ALL",
-    // }),
-    m.identify(),
+    m.deviceEndpoints({ endpoints }),
+    ...Relay.attributes("relay", endpoints.relay, relayKeys),
+    ...MultiState.attributes("bell", endpoints.bell, bellOptions),
   ],
   meta: { multiEndpoint: true },
-  exposes: [],
   configure: async (device, coordinatorEndpoint) => {
-    const ep1 = device.getEndpoint(1);
-    const ep2 = device.getEndpoint(2);
-  },  
+    await Relay.configure(
+      device,
+      coordinatorEndpoint,
+      endpoints.relay,
+      relayKeys
+    );
+    await MultiState.configure(
+      device,
+      coordinatorEndpoint,
+      endpoints.bell      
+    );
+  },
 };

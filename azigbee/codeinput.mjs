@@ -1,5 +1,4 @@
 import * as m from "zigbee-herdsman-converters/lib/modernExtend";
-import * as r from "zigbee-herdsman-converters/lib/reporting";
 import { assertString } from "zigbee-herdsman-converters/lib/utils";
 import { Zcl } from "zigbee-herdsman";
 import {
