@@ -51,8 +51,9 @@ export const ATTR = {
   MEDIA_PLAYER_PLAYMODE: 0xfcf7,
 
   // Relay cluster
-  RELAY_TYPE: 0xfce2,
-  RELAY_COUNTDOWN: 0xfce3,
+  RELAY_TYPE: 0x0000,
+  RELAY_ON_TIME: 0x0001,
+  RELAY_OFF_WAIT_TIME: 0x0002,
 };
 
 /**
@@ -144,8 +145,8 @@ export function identify(endpoints) {
   const toZigbee = [];
 
   for (const [name, id] of Object.entries(endpoints)) {
-    const keyName = `identify_${name}`;
-
+    // const keyName = `identify_${name}`;  // probably creates double _ with endpoint name, but I cant confire now
+    const keyName = "identify";
     exposes.push(
       e
         .enum(keyName, ea.SET, ["identify"])
