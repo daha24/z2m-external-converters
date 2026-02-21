@@ -16,13 +16,13 @@ const map = {
     cluster: null, // handled by m.onOff
   },
   on_time: {
-    cluster: "genOnOff",
-    attribute: "onTime",
+    cluster: CLUSTERS.RELAY_OPTIONS,
+    attribute: ATTR.RELAY_ON_TIME,
     type: Zcl.DataType.UINT16,
   },
   off_wait_time: {
-    cluster: "genOnOff",
-    attribute: "offWaitTime",
+    cluster: CLUSTERS.RELAY_OPTIONS,
+    attribute: ATTR.RELAY_OFF_WAIT_TIME,
     type: Zcl.DataType.UINT16,
   },
   type: {
@@ -61,7 +61,7 @@ function attributes(endpointName, endpointID, keys) {
         keys === undefined || keys.includes("power_on_behaviour"),
     }),
     on_time: m.numeric({
-      name: "on_time",
+      name: "on_countdown", // we must rename ontime to avoid probably unappropriate genOnOff convertor validation
       label: "Relay On Time",
       description:
         "Time [s] until the relay switches off automatically (0 = no on-time limit)",
@@ -72,11 +72,12 @@ function attributes(endpointName, endpointID, keys) {
       entityCategory: "config",
       endpointNames: [endpointName],
       cluster: map.on_time.cluster,
-      attribute: map.on_time.attribute,
+      attribute: { ID: map.on_time.attribute, type: map.on_time.type },
       access: "ALL",
     }),
+    // [2026-02-20 01:26:12] error: 	z2m: Publish 'set' 'on_time' to 'Bell' failed: 'Error: 'null' not allowed, choose between: toggle,off,on'
     on_time_limited: m.numeric({
-      name: "on_time",
+      name: "on_countdown", // we must rename ontime to avoid probably unappropriate genOnOff convertor validation
       label: "Relay On Time (Limited)",
       description:
         "Time [s] until the relay switches off automatically (device enforces 1–15 s)",
@@ -87,11 +88,11 @@ function attributes(endpointName, endpointID, keys) {
       entityCategory: "config",
       endpointNames: [endpointName],
       cluster: map.on_time.cluster,
-      attribute: map.on_time.attribute,
+      attribute: { ID: map.on_time.attribute, type: map.on_time.type },
       access: "ALL",
     }),
     off_wait_time: m.numeric({
-      name: "off_wait_time",
+      name: "off_wait_time_",
       label: "Relay Off Wait Time",
       description:
         "Time [s] to wait after turning off before it can be triggered again (0 = no off-wait-time limit)",
@@ -102,7 +103,7 @@ function attributes(endpointName, endpointID, keys) {
       entityCategory: "config",
       endpointNames: [endpointName],
       cluster: map.off_wait_time.cluster,
-      attribute: map.off_wait_time.attribute,
+      attribute: { ID: map.off_wait_time.attribute, type: map.off_wait_time.type },
       access: "ALL",
     }),
     type: m.enumLookup({

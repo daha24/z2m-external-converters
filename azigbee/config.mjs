@@ -52,6 +52,8 @@ export const ATTR = {
 
   // Relay cluster
   RELAY_TYPE: 0x0000,
+  RELAY_ON_TIME: 0x0001,
+  RELAY_OFF_WAIT_TIME: 0x0002,
 };
 
 /**

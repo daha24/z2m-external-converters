@@ -4,7 +4,7 @@ import MultiState from "/config/zigbee2mqtt/external_converters/azigbee/multista
 
 const endpoints = { relay: 1, bell: 2 };
 
-const relayKeys = ["state", "on_time_limited", "identify"];
+const relayKeys = ["state", "on_time_limited", "off_wait_time", "identify"];
 
 const bellOptions = {
   label: "State",
@@ -12,6 +12,7 @@ const bellOptions = {
   lookup: {
     OFF: 0,
     ON: 1,
+    UNKNOWN: 255,
   },
 };
 
