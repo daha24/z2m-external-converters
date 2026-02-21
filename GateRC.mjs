@@ -6,8 +6,8 @@ import CodeInput from "/config/zigbee2mqtt/external_converters/azigbee/codeinput
 const endpoints = { gate: 1, codeinput: 2 };
 
 export default {
-  zigbeeModel: ["GMControl"],
-  model: "GMControl",
+  zigbeeModel: ["GateRC"],
+  model: "GateRC",
   vendor: "FUNAMI corp. Ltd.",
   description:
     "Composite device to remote control gate motor analog controller CR/34 Serai Mercurio 300 with local code input (external button to open/close garage door IF valid short/long clicks sequence is entered).",
