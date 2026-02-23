@@ -64,7 +64,7 @@ function attributes(endpointName, endpointID, keys) {
     }),
     action: action({
       endpointName,
-      lookup: {
+      actions: {
         idle: 0,
         input_valid: 1,
         input_invalid: 2,
