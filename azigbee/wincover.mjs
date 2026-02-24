@@ -60,13 +60,12 @@ const map = {
  */
 export function attributes(endpointName, endpointID, options = {}, keys) {
   
-  const activityLookup = {
+  const activityLookup = options.lookup ?? {
     IDLE: 0,
     UP: 1,
     DOWN: 2,
     UNKNOWN: 255,
-    ...(options.lookup || {}),
-  };
+  };  
   const wincoverControls = options.controls || ["lift"];
 
   const all = {

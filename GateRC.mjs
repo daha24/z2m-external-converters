@@ -16,8 +16,10 @@ const wincoverKeys = [
 
 const wincoverOptions = {
   lookup: {
+    IDLE: 0,
     OPENING: 1,
     CLOSING: 2,
+    UNKNOWN: 255,
   },
 };
 
