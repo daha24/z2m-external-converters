@@ -24,5 +24,6 @@ export default {
   configure: async (device, coordinatorEndpoint) => {
     await readGenBasic(device, endpoints.rgbLED);
     await RgbLight.configure(device, coordinatorEndpoint, endpoints.rgbLED, rgbKeys);
+    await Button.configure(device, coordinatorEndpoint, endpoints.button);
   },
 };

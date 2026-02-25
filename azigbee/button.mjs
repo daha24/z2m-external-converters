@@ -13,6 +13,10 @@ import { action } from "./action.mjs";
  * Central mapping of button attributes
  */
 const map = {
+  action: {
+    cluster: "genMultistateInput",
+    attribute: "presentValue",
+  },
   long_press_delay: {
     cluster: CLUSTERS.BUTTON_OPTIONS,
     attribute: ATTR.BUTTON_LONG_PRESS_DELAY,
