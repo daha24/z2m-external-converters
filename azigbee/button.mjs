@@ -37,6 +37,11 @@ const map = {
     attribute: ATTR.BUTTON_FEEDBACK_LEVEL,
     type: Zcl.DataType.ENUM8,
   },
+  button_reversal: {
+    cluster: CLUSTERS.BUTTON_OPTIONS,
+    attribute: ATTR.BUTTON_REVERSAL,
+    type: Zcl.DataType.BOOLEAN,
+  },
 };
 
 /**
@@ -151,6 +156,22 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
         type: map.feedback_level.type,
       },
       access: "ALL",
+    }),
+    
+    button_reversal: m.binary({
+      name: "button_reversal",
+      label: "Button Reversal",
+      description: "If ON, button orientation is reversed = device placed upside down.",
+      valueOn: ["ON", 1],
+      valueOff: ["OFF", 0],
+      entityCategory: "config",
+      cluster: map.button_reversal.cluster,
+      attribute: {
+        ID: map.button_reversal.attribute,
+        type: map.button_reversal.type,
+      },
+      access: "ALL",
+      ...(endpointName && { endpointName }),
     }),
 
     identify: identify({ [endpointName]: endpointID }),
