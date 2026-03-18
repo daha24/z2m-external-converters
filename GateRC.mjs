@@ -14,15 +14,6 @@ const wincoverKeys = [
   "identify",
 ];
 
-const wincoverOptions = {
-  lookup: {
-    IDLE: 0,
-    OPENING: 1,
-    CLOSING: 2,
-    UNKNOWN: 255,
-  },
-};
-
 export default {
   zigbeeModel: ["GateRC"],
   model: "GateRC",
@@ -32,13 +23,26 @@ export default {
   ota: true,
   extend: [
     m.deviceEndpoints({ endpoints }),
-    ...WinCover.attributes("motor", endpoints.motor, wincoverOptions, wincoverKeys),
+    ...WinCover.attributes({
+      endpointName: "motor",
+      endpointID: endpoints.motor,
+      lookup: {
+        IDLE: 0,
+        OPENING: 1,
+        CLOSING: 2,
+        UNKNOWN: 255,
+      },
+      keys: wincoverKeys,
+    }),
     ...CodeInput.attributes("codeinput", endpoints.codeinput),
   ],
   meta: { multiEndpoint: true },
   configure: async (device, coordinatorEndpoint) => {
     await readGenBasic(device, endpoints.motor);
-    await WinCover.configure(device, coordinatorEndpoint, endpoints.motor, wincoverKeys);
+    await WinCover.configure(device, coordinatorEndpoint, {
+      endpointID: endpoints.motor,
+      keys: wincoverKeys,
+    });
     await CodeInput.configure(device, coordinatorEndpoint, endpoints.codeinput);
   },
 };

@@ -1,5 +1,6 @@
 import * as r from "zigbee-herdsman-converters/lib/reporting";
 import * as e from "zigbee-herdsman-converters/lib/exposes";
+import * as m from "zigbee-herdsman-converters/lib/modernExtend";
 import { access as ea } from "zigbee-herdsman-converters/lib/exposes";
 import { getOptions } from "zigbee-herdsman-converters/lib/utils";
 
@@ -121,9 +122,9 @@ export function filter_keys(all, keys) {
  * @param {Object} device - Zigbee device object
  * @param {number|string} endpointID - endpoint number or name
  */
-export async function readGenBasic(device, endpointID) {
+export async function readGenBasic(device, endpointID = 1) {
   const ep = device.getEndpoint(endpointID);
-  if (!ep) throw new Error(`Endpoint ${endpointID} not found`);
+  if (!ep) throw new Error(`Endpoint ${endpointID} not found`); 
 
   await ep.read("genBasic", [
     "modelId",
@@ -134,53 +135,59 @@ export async function readGenBasic(device, endpointID) {
 }
 
 /**
- * Creates standard Identify exposes for multiple endpoints
- * @param {Object} endpoints - a standard z2m endpoint map as used in m.deviceEndpoints
- * @returns {Object} { exposes, toZigbee, isModernExtend }
+ * Wrapper around identify exposes to handle optional endpoints
+ * @param {Object} [endpoints] - a standard z2m endpoint map as used in m.deviceEndpoints
+ *                               if omitted, falls back to default m.identify()
+ * @returns {Object} identify exposes
  */
 export function identify(endpoints) {
-  if (!endpoints) throw new Error("Endpoint mapping required");
+  if (endpoints) {
+    // multi-endpoint case
+    const exposes = [];
+    const toZigbee = [];
 
-  const exposes = [];
-  const toZigbee = [];
-
-  for (const [name, id] of Object.entries(endpoints)) {
+    for (const [name, id] of Object.entries(endpoints)) {
     // const keyName = `identify_${name}`;  // probably creates double _ with endpoint name, but I cant confire now
-    const keyName = "identify";
-    exposes.push(
+      const keyName = "identify";
+      exposes.push(
       e
         .enum(keyName, ea.SET, ["identify"])
-        .withLabel("Identify")
+          .withLabel("Identify")
         .withDescription(
           `Initiate device identification (endpoint: ${name}, id: ${id})`
         )
-        .withCategory("config")
-        .withEndpoint(name)
-    );
+          .withCategory("config")
+          .withEndpoint(name)
+      );
 
-    toZigbee.push({
-      key: [keyName],
-      options: [
+      toZigbee.push({
+        key: [keyName],
+        options: [
         e
           .numeric("identify_timeout", ea.SET)
           .withDescription(
             "Sets the duration of the identification procedure in seconds (1–30, default 3)."
           )
-          .withValueMin(1)
-          .withValueMax(30),
-      ],
-      convertSet: async (entity, key, value, meta) => {
-        const timeoutVal = meta.options?.identify_timeout ?? 3;
-        const ep = entity.getDevice().getEndpoint(id);
-        await ep.command(
-          "genIdentify",
-          "identify",
-          { identifytime: timeoutVal },
+            .withValueMin(1)
+            .withValueMax(30),
+        ],
+        convertSet: async (entity, key, value, meta) => {
+          const timeoutVal = meta.options?.identify_timeout ?? 3;
+          const ep = entity.getDevice().getEndpoint(id);
+          await ep.command(
+            "genIdentify",
+            "identify",
+            { identifytime: timeoutVal },
           getOptions(meta.mapped, ep)
-        );
-      },
-    });
+          );
+        },
+      });
+    }
+
+    return { exposes, toZigbee, isModernExtend: true };
   }
 
-  return { exposes, toZigbee, isModernExtend: true };
+  // fallback single endpoint default
+  return m.identify();
+
 }

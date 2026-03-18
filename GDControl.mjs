@@ -14,10 +14,14 @@ export default {
   ota: true,
   extend: [
     m.deviceEndpoints({ endpoints }),
-    ...WinCover.attributes("roller", endpoints.roller, {
+    ...WinCover.attributes({
+      endpointName: "roller",
+      endpointID: endpoints.roller,
       lookup: {
+        IDLE: 0,
         OPENING: 1,
         CLOSING: 2,
+        UNKNOWN: 255,
       },
     }),
     ...CodeInput.attributes("codeinput", endpoints.codeinput),
@@ -25,7 +29,9 @@ export default {
   meta: { multiEndpoint: true },
   configure: async (device, coordinatorEndpoint) => {
     await readGenBasic(device, endpoints.roller);
-    await WinCover.configure(device, coordinatorEndpoint, endpoints.roller);
+    await WinCover.configure(device, coordinatorEndpoint, {
+      endpointID: endpoints.roller,
+    });
     await CodeInput.configure(device, coordinatorEndpoint, endpoints.codeinput);
   },
 };

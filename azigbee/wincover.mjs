@@ -50,34 +50,48 @@ const map = {
 
 /**
  * Returns wincover exposes, optionally filtered by keys
- * @param {string} endpointName
- * @param {integer} endpointID
- * @param {Object} [options] - optional overrides for exposes
- * @param {Object} [options.lookup] - override/extend enum values for activity expose
- * @param {string[]} [options.controls] - array of windowCovering controls, e.g. ["lift", "tilt"]
- * @param {string[]} [keys] - optional array of keys to include
- *                             available keys: ["activity", "obstruction", "controls", "calibration_mode", "calibration_time", "motor_reversal", "warn_on_move", "identify"]
+ *
+ * This function builds all modernExtend exposes for a wincover endpoint.
+ * Both `endpointName` and `endpointID` are optional for single-endpoint devices.
+ *
+ * @param {Object}   [params] - Options object.
+ * @param {string}   [params.endpointName] - Name of the endpoint.
+ * @param {number}   [params.endpointID=1] - Endpoint ID (defaults to 1 for single-endpoint devices).
+ * @param {Object}   [params.lookup] - Override/extend enum values for activity expose.
+ * @param {string[]} [params.controls] - Array of windowCovering controls, e.g. ["lift", "tilt"].
+ * @param {string[]} [params.keys] - Optional array of keys to include.
+ *                                    Available keys: ["activity", "obstruction", "controls", "calibration_mode", "calibration_time", "motor_reversal", "warn_on_move", "identify"]
+ *
+ * @example
+ * // Single-endpoint default
+ * attributes({ keys: ["activity", "controls"] });
+ *
+ * @example
+ * // Multi-endpoint
+ * attributes({ endpointName: "roller", endpointID: 2, keys: ["activity", "controls"] });
  */
-export function attributes(endpointName, endpointID, options = {}, keys) {
-  
-  const activityLookup = options.lookup ?? {
+export function attributes({
+  endpointName = null,
+  endpointID = 1,
+  lookup = {
     IDLE: 0,
     UP: 1,
     DOWN: 2,
     UNKNOWN: 255,
-  };  
-  const wincoverControls = options.controls || ["lift"];
-
+  },
+  controls = ["lift"],
+  keys,
+} = {}) {
   const all = {
     activity: m.enumLookup({
       name: "activity",
       label: "Activity",
       description: "",
-      lookup: activityLookup,
-      endpointName,
+      lookup: lookup,
       cluster: map.activity.cluster,
       attribute: map.activity.attribute,
       access: "STATE_GET",
+      ...(endpointName && { endpointName }),
     }),
 
     obstruction: m.enumLookup({
@@ -89,15 +103,15 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
         BLOCKED: 1,
         UNKNOWN: 255,
       },
-      endpointName,
       cluster: map.obstruction.cluster,
       attribute: { ID: map.obstruction.attribute, type: map.obstruction.type },
       access: "STATE_GET",
+      ...(endpointName && { endpointName }),
     }),
 
     controls: m.windowCovering({
-      controls: wincoverControls,
-      endpointNames: [endpointName],
+      controls,
+      ...(endpointName && { endpointNames: [endpointName] }),
     }),
 
     calibration_mode: m.binary({
@@ -108,10 +122,10 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointName,
       cluster: map.calibration_mode.cluster,
       attribute: map.calibration_mode.attribute,
       access: "ALL",
+      ...(endpointName && { endpointName }),
     }),
 
     calibration_time: m.numeric({
@@ -123,10 +137,10 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
       valueMax: 120,
       valueStep: 1,
       entityCategory: "config",
-      endpointNames: [endpointName],
       cluster: map.calibration_time.cluster,
       attribute: map.calibration_time.attribute,
       access: "ALL",
+      ...(endpointName && { endpointNames: [endpointName] }),
     }),
 
     motor_reversal: m.binary({
@@ -136,10 +150,10 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointName,
       cluster: map.motor_reversal.cluster,
       attribute: map.motor_reversal.attribute,
       access: "ALL",
+      ...(endpointName && { endpointName }),
     }),
 
     warn_on_move: m.binary({
@@ -150,27 +164,48 @@ export function attributes(endpointName, endpointID, options = {}, keys) {
       valueOn: ["ON", 1],
       valueOff: ["OFF", 0],
       entityCategory: "config",
-      endpointName,
       cluster: map.warn_on_move.cluster,
       attribute: {
         ID: map.warn_on_move.attribute,
         type: map.warn_on_move.type,
       },
       access: "ALL",
+      ...(endpointName && { endpointName }),
     }),
 
-    identify: identify({ [endpointName]: endpointID }),
+    identify: endpointName
+      ? identify({ [endpointName]: endpointID })
+      : identify(),
   };
 
   return filter_keys(all, keys);
 }
 
 /**
- * Configure wincover endpoint
- * Reads & binds only the clusters needed for the specified keys
- * and initializes lift percentage
+ * Configure a wincover endpoint
+ *
+ * This function reads and binds only the clusters needed for the specified keys,
+ * and initializes the lift percentage for the endpoint.
+ *
+ * @param {Object} device - The Zigbee device object.
+ * @param {Object} coordinatorEndpoint - The coordinator endpoint object.
+ * @param {Object} [params] - Optional parameters.
+ * @param {number} [params.endpointID=1] - The endpoint ID to configure. Defaults to 1 for single-endpoint devices.
+ * @param {string[]} [params.keys] - Array of attribute keys to configure, e.g., ["activity", "controls", "calibration_mode"].
+ *
+ * @example
+ * // Single-endpoint device (uses default endpoint 1)
+ * await configure(device, coordinatorEndpoint, { keys: ["activity", "controls"] });
+ *
+ * @example
+ * // Multi-endpoint device
+ * await configure(device, coordinatorEndpoint, { endpointID: 2, keys: ["activity", "controls"] });
  */
-async function configure(device, coordinatorEndpoint, endpointID, keys) {
+async function configure(
+  device,
+  coordinatorEndpoint,
+  { endpointID = 1, keys } = {}
+) {
   await config_map(device, coordinatorEndpoint, endpointID, map, keys);
   const ep = device.getEndpoint(endpointID);
   await r.currentPositionLiftPercentage(ep);
